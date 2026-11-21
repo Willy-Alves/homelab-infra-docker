@@ -1,0 +1,40 @@
+services:
+  gluetun:
+    container_name: gluetun
+    image: qmcgaw/gluetun:latest
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    ports:
+      - "8888:8888/tcp"  
+      - "53:53/tcp"       
+      - "53:53/udp"       
+      - "8080:80/tcp"     
+    environment:
+      - TZ=America/Sao_Paulo
+      - VPN_SERVICE_PROVIDER=mullvad
+      - VPN_TYPE=wireguard
+      - WIREGUARD_PRIVATE_KEY=${WIREGUARD_PRIVATE_KEY}
+      - WIREGUARD_ADDRESSES=${WIREGUARD_ADDRESSES}
+      - HTTPPROXY=on
+
+  pihole:
+    container_name: pihole
+    image: pihole/pihole:latest
+    restart: unless-stopped
+    network_mode: "service:gluetun" 
+    depends_on:
+      - gluetun
+    environment:
+      TZ: 'America/Sao_Paulo'
+      WEBPASSWORD: ${PIHOLE_WEBPASSWORD}
+      DNSMASQ_LISTENING: 'all'
+      FTLCONF_dns_listeningMode: 'ALL'
+      PIHOLE_DNS_: ${PIHOLE_DNS} 
+    volumes:
+      - ./pihole:/etc/pihole
+      - ./dnsmasq.d:/etc/dnsmasq.d
+    cap_add:
+      - NET_ADMIN
