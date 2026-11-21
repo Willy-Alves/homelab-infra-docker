@@ -22,7 +22,7 @@ services:
       - DNS_SERVER=off
       - DNS_UPSTREAM_RESOLVER_TYPE=plain
       - DNS_UPSTREAM_PLAIN_ADDRESSES=10.64.0.1:53
-
+      
   pihole:
     container_name: pihole
     image: pihole/pihole:latest
