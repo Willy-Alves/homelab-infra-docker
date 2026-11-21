@@ -19,6 +19,9 @@ services:
       - WIREGUARD_PRIVATE_KEY=${WIREGUARD_PRIVATE_KEY}
       - WIREGUARD_ADDRESSES=${WIREGUARD_ADDRESSES}
       - HTTPPROXY=on
+      - DNS_SERVER=off
+      - DNS_UPSTREAM_RESOLVER_TYPE=plain
+      - DNS_UPSTREAM_PLAIN_ADDRESSES=10.64.0.1:5
 
   pihole:
     container_name: pihole
