@@ -67,10 +67,18 @@ graph TD
 
 ## Destaques Técnicos e Boas Práticas
 
-* **Roteamento de DNS por VPN:** O container do Pi-hole utiliza `network_mode: "service:gluetun"`, forçando todas as resoluções DNS upstream a trafegarem criptografadas pelo túnel WireGuard.
-* **Gestão de Recursos (8 GB RAM):** Aplicação de limites rígidos de memória (`deploy.resources.limits.memory`) na stack do Zabbix (350 MB Server, 250 MB Web, 512 MB PostgreSQL) para evitar contenção de memória com o Nextcloud e o Ollama.
-* **Isolamento de Superfície:** O serviço Ollama é exposto exclusivamente em `127.0.0.1:11434`, impedindo acesso externo direto pela rede.
-* **Segurança de Credenciais:** Nenhuma senha ou chave privada é versionada. Todas as variáveis sensíveis são abstraídas via `${VARIAVEL}` e documentadas em `.env.example`, com `.env` bloqueado no `.gitignore`.
+- **Roteamento de DNS por VPN:** O container do Pi-hole utiliza `network_mode: "service:gluetun"`, forçando todas as resoluções DNS upstream a trafegarem criptografadas pelo túnel WireGuard.
+- **Gestão de Recursos (8 GB RAM):** Aplicação de limites rígidos de memória (`deploy.resources.limits.memory`) na stack do Zabbix (350 MB Server, 250 MB Web, 512 MB PostgreSQL) para evitar contenção de memória com o Nextcloud e o Ollama.
+- **Isolamento de Superfície:** O serviço Ollama é exposto exclusivamente em `127.0.0.1:11434`, impedindo acesso externo direto pela rede.
+- **Segurança de Credenciais:** Nenhuma senha ou chave privada é versionada. Todas as variáveis sensíveis são abstraídas via `${VARIAVEL}` e documentadas em `.env.example`, com `.env` bloqueado no `.gitignore`.
+
+### Edge AI & Automação de Triagem (`Ollama`)
+
+O serviço **Ollama** em `docker-compose-utils.yml` não atua como chat genérico — ele roda o modelo quantizado leve **`qwen2.5:1.5b`** estritamente como motor de inferência textual para um pipeline de organização automática de arquivos:
+
+- **Baixo consumo de recursos:** Em vez de visão computacional pesada, um script em Python usa o `exiftool` para extrair apenas metadados (`EXIF/IPTC/XMP`) e envia as tags em JSON para a API local do Ollama (`127.0.0.1:11434`).
+- **Gestão de RAM (OOM Prevention):** Configurado com `OLLAMA_KEEP_ALIVE=5m`, descarregando o modelo da memória após 5 minutos de inatividade para não competir por RAM com o Zabbix e o Nextcloud no host de 8 GB.
+- **Execução segura (Zero-Data-Loss):** Agendado via `Cron`, o pipeline nunca exclui arquivos — itens sem metadados ou não classificados são movidos intactos para uma pasta de quarentena.
 
 ---
 
