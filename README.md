@@ -79,7 +79,7 @@ O serviço **Ollama** em `docker-compose-utils.yml` não atua como chat genéric
 - **Baixo consumo de recursos:** Em vez de visão computacional pesada, um script em Python usa o `exiftool` para extrair apenas metadados (`EXIF/IPTC/XMP`) e envia as tags em JSON para a API local do Ollama (`127.0.0.1:11434`).
 - **Gestão de RAM (OOM Prevention):** Configurado com `OLLAMA_KEEP_ALIVE=5m`, descarregando o modelo da memória após 5 minutos de inatividade para não competir por RAM com o Zabbix e o Nextcloud no host de 8 GB.
 - **Execução segura (Zero-Data-Loss):** Agendado via `Cron`, o pipeline nunca exclui arquivos — itens sem metadados ou não classificados são movidos intactos para uma pasta de quarentena.
-
+- **Código-fonte da automação:** [`scripts/organizador.py`](scripts/organizador.py) *(desenvolvimento assistido por IA para triagem por metadados)*
 ---
 
 ## Evidências de Operação
