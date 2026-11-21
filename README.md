@@ -99,7 +99,7 @@ O serviço **Ollama** em `docker-compose-utils.yml` não atua como chat genéric
 
 1. **Clone o repositório:**
    ```bash
-   git clone git@github.com:Willy-Alves/homelab-infra-docker.git
+   git clone https://github.com/Willy-Alves/homelab-infra-docker.git
    cd homelab-infra-docker
    ```
 
