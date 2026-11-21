@@ -67,10 +67,12 @@ graph TD
 
 ## Destaques Técnicos e Boas Práticas
 
-- **Roteamento de DNS por VPN:** O container do Pi-hole utiliza `network_mode: "service:gluetun"`, forçando todas as resoluções DNS upstream a trafegarem criptografadas pelo túnel WireGuard.
+- **Roteamento de DNS por VPN:** O container do Pi-hole utiliza `network_mode: "service:gluetun"`. O DNS interno do Gluetun é desativado e o upstream é o resolvedor privado da Mullvad (`10.64.0.1`), forçando todas as resoluções a trafegarem criptografadas pelo túnel WireGuard.
 - **Gestão de Recursos (8 GB RAM):** Aplicação de limites rígidos de memória (`deploy.resources.limits.memory`) na stack do Zabbix (350 MB Server, 250 MB Web, 512 MB PostgreSQL) para evitar contenção de memória com o Nextcloud e o Ollama.
 - **Isolamento de Superfície:** O serviço Ollama é exposto exclusivamente em `127.0.0.1:11434`, impedindo acesso externo direto pela rede.
 - **Segurança de Credenciais:** Nenhuma senha ou chave privada é versionada. Todas as variáveis sensíveis são abstraídas via `${VARIAVEL}` e documentadas em `.env.example`, com `.env` bloqueado no `.gitignore`.
+
+---
 
 ### Edge AI & Automação de Triagem (`Ollama`)
 
@@ -80,6 +82,7 @@ O serviço **Ollama** em `docker-compose-utils.yml` não atua como chat genéric
 - **Gestão de RAM (OOM Prevention):** Configurado com `OLLAMA_KEEP_ALIVE=5m`, descarregando o modelo da memória após 5 minutos de inatividade para não competir por RAM com o Zabbix e o Nextcloud no host de 8 GB.
 - **Execução segura (Zero-Data-Loss):** Agendado via `Cron`, o pipeline nunca exclui arquivos — itens sem metadados ou não classificados são movidos intactos para uma pasta de quarentena.
 - **Código-fonte da automação:** [`scripts/organizador.py`](scripts/organizador.py) *(desenvolvimento assistido por IA para triagem por metadados)*
+
 ---
 
 ## Evidências de Operação
@@ -90,8 +93,46 @@ O serviço **Ollama** em `docker-compose-utils.yml` não atua como chat genéric
 ### Disponibilidade de Serviços (Uptime Kuma)
 ![Uptime Kuma Dashboard](docs/prints/uptime-kuma.png)
 
-### Filtragem DNS e Túnel VPN (Pi-hole)
+### Filtragem DNS (Pi-hole)
 ![Pi-hole Dashboard](docs/prints/pihole-dashboard.png)
+
+### Validação do Túnel VPN (Gluetun)
+
+Para comprovar que o proxy e o DNS saem pelo túnel WireGuard (Mullvad), o log do Gluetun e a confirmação externa da Mullvad foram verificados:
+
+```bash
+docker logs gluetun 2>&1 | grep -E "dns|Public IP|wireguard" | tail -8
+curl -x http://127.0.0.1:8888 https://am.i.mullvad.net/connected
+```
+
+![Validação do túnel VPN](docs/prints/gluetun-log.png)
+
+- Túnel WireGuard estabelecido e DNS usando o resolvedor interno da Mullvad (`10.64.0.1`).
+- `leak check` do Gluetun sem vazamento de DNS.
+- O IP exibido ao usar o proxy pertence à Mullvad, diferente do IP do host.
+
+---
+
+## Problemas Encontrados e Soluções
+
+### Conflito na porta 53 (Gluetun x Pi-hole)
+
+- **Sintoma:** o log do Gluetun repetia `listen tcp :53: bind: address already in use`, com tentativas de reinício cada vez mais espaçadas.
+- **Causa:** o Pi-hole usa `network_mode: service:gluetun` e divide a rede com o Gluetun. Os dois disputavam a porta 53, pois o Gluetun possui um servidor DNS interno próprio.
+- **Solução:** desativei o DNS interno do Gluetun e defini o resolvedor da Mullvad como upstream, mantendo o DNS dentro do túnel:
+
+  ```yaml
+  - DNS_SERVER=off
+  - DNS_UPSTREAM_RESOLVER_TYPE=plain
+  - DNS_UPSTREAM_PLAIN_ADDRESSES=10.64.0.1:53
+  ```
+
+- **Aprendizado:** a validação das variáveis de DNS do Gluetun é rígida e exige as três juntas. Cada erro (`dot must be plain`, `upstream plain address must be set`, `not an ip:port`) apontava a próxima variável a corrigir. Os logs mostraram o caminho em cada tentativa.
+- **Validação:** Gluetun e Pi-hole `healthy`, `nslookup` resolvendo pelo Pi-hole e a Mullvad confirmando a conexão.
+
+### Aviso de containers órfãos no Docker Compose
+
+O aviso `Found orphan containers` é esperado: as quatro stacks ficam na mesma pasta e compartilham o mesmo nome de projeto. O flag `--remove-orphans` não deve ser usado, pois removeria os containers das outras stacks.
 
 ---
 
@@ -116,3 +157,4 @@ O serviço **Ollama** em `docker-compose-utils.yml` não atua como chat genéric
    docker compose -f docker-compose-kuma.yml up -d
    docker compose -f docker-compose-utils.yml up -d
    ```
+
